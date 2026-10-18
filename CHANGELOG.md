@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.3 — 2026-10-18
+
+- Changed the default waste-sensor date format to `%d-%m-%Y` and updated the setup documentation.
+- Kept the internally stored pickup date in ISO format for scheduling and reply IDs.
+
 ## 0.2.2 — 2026-10-18
 
 - Send and clear notifications for two phones in independent parallel branches, so a failure on one device does not prevent an attempt on the other.
