@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 — 2026-10-18
+
+- Added an optional, configurable morning heads-up with its own time, title and text before the existing evening reminder.
+- The morning notification lists matching waste types and can go to both configured phones without affecting the evening Yes/No state, repeat count, or helper.
+- Documented the separate morning notification and its behavior if Home Assistant is offline at the scheduled time.
+
 ## 0.2.3 — 2026-10-18
 
 - Changed the default waste-sensor date format to `%d-%m-%Y` and updated the setup documentation.
