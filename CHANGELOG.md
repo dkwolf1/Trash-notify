@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.2 — 2026-10-18
+
+- Send and clear notifications for two phones in independent parallel branches, so a failure on one device does not prevent an attempt on the other.
+- Validate the persistent text helper's length settings before writing reminder state.
+- Stop scheduled processing with a clear error when the helper contains invalid JSON instead of silently replacing its state.
+- Clarified that a failed notification consumes one send attempt because the state is checkpointed before delivery.
+
 ## 0.2.1 — 2026-10-18
 
 - Added an optional second mobile notify service, configured separately from the first phone.
