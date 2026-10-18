@@ -1,10 +1,12 @@
 # Trash Notify
 
+[English](README.md) · [Nederlands](README.nl.md)
+
 **Trash Notify** is a Home Assistant automation blueprint for waste-collection reminders with optional **Yes / No** mobile actions and configurable repeat notifications.
 
 A **Core restart or automation reload does not reset an active reminder**: the next reminder time, collection date, reminder count and confirmation are stored in one persistent `input_text` helper. A minute-based trigger resumes the cycle after startup. No extra waste sensors, template sensors, AppDaemon scripts, or custom integrations are needed.
 
-> **Version:** 0.2.3 — candidate for testing on Home Assistant OS 2026.10 or later. The YAML has been statically checked; phone notifications and restarts still need to be verified on a real Home Assistant installation before labeling this stable.
+> **Version:** 0.2.3 — candidate for testing on Home Assistant OS 2026.10 or later. One No → Yes cycle has been observed on a real installation. Core restart recovery and two-device delivery still need live verification before labeling this stable.
 >
 > **Important:** enabling Yes/No requires **one `input_text` helper per Trash Notify automation**. Simple one-shot mode doesn't require the helper.
 
@@ -14,7 +16,7 @@ A **Core restart or automation reload does not reset an active reminder**: the n
 
 ## Features
 
-- Supports up to four waste sensors; their **state** must contain a collection date (default format `%d-%m-%Y`).
+- Supports up to four waste sensors; their **state** must equal a collection date (default format `%d-%m-%Y`).
 - Configure the first notification time and number of days before pickup (`1` = tomorrow). The date format applies to sensor states; an existing automation with a saved date-format input keeps its selected value until you change it.
 - Optional actionable iOS/Android notifications: **Yes** confirms the bins are out and clears the notification; **No** postpones the next reminder from the time you tap it.
 - No response: the next reminder arrives after the configured interval (e.g. 10, 60 or 120 minutes), up to a configurable maximum.
@@ -27,7 +29,7 @@ A **Core restart or automation reload does not reset an active reminder**: the n
 
 ## Installation
 
-1. Click **Import blueprint into Home Assistant** above, or go to **Settings → Automations & scenes → Blueprints → Import Blueprint** and paste the [blueprint URL](https://github.com/dkwolf1/Trash-notify/blob/main/blueprints/automation/trash_notify.yaml). For manual installation, download the YAML and place it at `/config/blueprints/automation/trash_notify.yaml`.
+1. Click **Import blueprint into Home Assistant** above, or go to **Settings → Automations & scenes → Blueprints → Import Blueprint** and paste the [blueprint URL](https://github.com/dkwolf1/Trash-notify/blob/main/blueprints/automation/trash_notify.yaml). For manual installation, download the YAML and place it at `/config/blueprints/automation/dkwolf1/trash_notify.yaml`.
 2. For **Yes/No mode**, create a Text helper in **Settings → Devices & services → Helpers → Create helper → Text**:
    - Name: `Trash Notify State`
    - Entity ID (suggested): `input_text.trash_notify_state`
@@ -41,7 +43,7 @@ A **Core restart or automation reload does not reset an active reminder**: the n
    input_text:
      trash_notify_state:
        name: Trash Notify State
-      min: 0
+       min: 0
        max: 255
        # Important: no `initial:` property
    ```
@@ -50,6 +52,8 @@ A **Core restart or automation reload does not reset an active reminder**: the n
 4. Import the blueprint or make an automation based on it. Choose the waste sensors, first reminder time and **Notificatieapparaat 1** (`notify.mobile_app_*`). Optionally configure **Notificatieapparaat 2** with a different mobile notify service (no group necessary).
 5. Enable **Vraag om Ja/Nee-bevestiging**, select the `input_text` entity under **Statusopslag voor bevestigingen**, and set the repeat interval and notification maximum.
 6. Disable your old reminder automation before activating the new one to prevent duplicate pushes.
+
+After repository updates, re-import the blueprint in Home Assistant and reload automations. Check the date-format input on existing automations: an explicitly saved value does not change when the blueprint default changes.
 
 For multiple Trash Notify automations, create **one separate `input_text` helper per automation** to prevent their state and button IDs from colliding.
 
@@ -61,7 +65,7 @@ For multiple Trash Notify automations, create **one separate `input_text` helper
   {"day":"2026-10-18","due":"2026-10-19","mask":1,"status":"pending","sent":1,"next":1792339200}
   ```
 
-- The `day` field identifies the reminder day, `due` the pickup day, `mask` the selected waste sensors, `status` stores `pending` or `confirmed`, `sent` counts pushes, and `next` stores the Unix timestamp at which the next push is due.
+- The `day` field identifies the reminder day, `due` the pickup day, `mask` the selected waste sensors, `status` stores `pending` or `confirmed`, `sent` counts send attempts, and `next` stores the Unix timestamp at which the next push is due. The stored `day` and `due` values use ISO dates even when the sensors use `%d-%m-%Y`.
 - Each `input_text.set_value` write is followed by `homeassistant.save_persistent_states` to checkpoint the state.
 - Instead of a long-running `delay` / `wait_for_trigger`, each minute or on startup the automation checks whether a pending reminder is due. After a restart it therefore uses the **previously stored reminder time**, rather than starting another full interval.
 - A **Yes** reply is stored as `confirmed`, so restarting Core does **not** restart that day's notifications. The notification is also cleared by its tag.
@@ -71,6 +75,24 @@ For multiple Trash Notify automations, create **one separate `input_text` helper
 ### Example
 
 At 18:00 you receive a push. You tap **No** at 18:05 and choose a 60-minute interval. The next push is scheduled for **19:05**. If Core restarts at 18:30, the stored `next` timestamp is retained and the notification is still sent around 19:05. If you tap **Yes** at 18:35, the confirmation is saved and there are no more pushes for that collection.
+
+## After Yes and the next pickup
+
+Tapping **Yes** keeps the helper on `confirmed` for that reminder day. Changing only the automation time on the same day does not start another notification. The helper is not cleared automatically: otherwise the minute-based check could start the same pickup again.
+
+On a later day, once the configured time has passed and a sensor state matches the next target pickup date, the blueprint replaces the old state with a new `pending` cycle. If no sensor matches, the old `confirmed` state may remain visible; it does not block a future matching pickup.
+
+To repeat a test **on the same day**, run this once in **Developer Tools → Actions**:
+
+```yaml
+action: input_text.set_value
+target:
+  entity_id: input_text.trash_notify_state
+data:
+  value: "{}"
+```
+
+Then make sure the sensor date matches the configured offset and date format. If the reminder time has already passed, the next minute check can start the cycle; otherwise it starts at the configured time. Use your own helper entity ID if it differs from the example.
 
 ## Notification action / mobile limitations
 
@@ -88,7 +110,7 @@ Both devices receive the same action IDs and notification tag. Tapping **Yes** o
 - With unexpected power loss at the exact moment a notification is sent, it is impossible to guarantee exactly-once delivery: state is saved **before** sending to favor avoiding duplicate notifications. A send interrupted by a crash, or a failed notification service, consumes one send attempt; the next attempt occurs at the configured interval if the maximum has not been reached.
 - Notifications and notification clearing run in independent parallel branches for the two phones. If one service fails, Home Assistant still attempts the other.
 - Reminder cycles stop sending after the end of the collection day, even if the maximum number has not been reached.
-- If you manually edit or reset the `input_text` state during a cycle, the blueprint may start a new cycle.
+- Manually resetting the `input_text` state to `{}` can start a new cycle on the same day if the time and sensor date still match. Do this only when intentionally repeating a test.
 - The first one-shot notification (confirmation disabled) retains the original trigger-at-time behavior. It is not replayed following a missed trigger.
 
 ## Credits
