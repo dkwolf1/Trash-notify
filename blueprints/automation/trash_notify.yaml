@@ -35,8 +35,8 @@ blueprint:
               mode: box
         date_format:
           name: Datumformaat van de sensoren
-          description: Bijvoorbeeld %Y-%m-%d.
-          default: "%Y-%m-%d"
+          description: Bijvoorbeeld %d-%m-%Y.
+          default: "%d-%m-%Y"
           selector:
             text: {}
     sensors:
