@@ -77,11 +77,20 @@ blueprint:
       icon: mdi:cellphone-message
       input:
         notifier:
-          name: Notificatieactie
+          name: Notificatieapparaat 1
           description: >-
-            Bijvoorbeeld notify.mobile_app_iphone_dennis of een notify-groep
-            met Companion App-telefoons. Voor Ja/Nee zijn actieknoppen nodig.
+            Notify-service van het eerste toestel, bijvoorbeeld
+            notify.mobile_app_iphone_dennis.
           default: notify.notify
+          selector:
+            text: {}
+        notifier_2:
+          name: Notificatieapparaat 2 (optioneel)
+          description: >-
+            Tweede notify.mobile_app_* service. Leeg laten om alleen
+            naar het eerste toestel te sturen. Ja op een van de telefoons
+            stopt de herinneringen op beide.
+          default: ""
           selector:
             text: {}
         reminder_title:
@@ -162,6 +171,8 @@ variables:
   reminder_time: !input reminder_time
   day_offset: !input day_offset
   date_format: !input date_format
+  notifier: !input notifier
+  notifier_2: !input notifier_2
   reminder_title: !input reminder_title
   reminder_message: !input reminder_message
   confirmation_enabled: !input confirmation_enabled
@@ -224,6 +235,15 @@ actions:
         data:
           title: "{{ reminder_title }}"
           message: "{{ reminder_message }}{{ due_names | trim }}"
+      - if:
+          - condition: template
+            value_template: >-
+              {{ notifier_2 | trim != '' and notifier_2 != notifier }}
+        then:
+          - action: "{{ notifier_2 }}"
+            data:
+              title: "{{ reminder_title }}"
+              message: "{{ reminder_message }}{{ due_names | trim }}"
 
   # Confirmation mode requires a persistent input_text entity.
   - if:
@@ -327,6 +347,16 @@ actions:
                       message: clear_notification
                       data:
                         tag: "{{ reply_tag }}"
+                  - if:
+                      - condition: template
+                        value_template: >-
+                          {{ notifier_2 | trim != '' and notifier_2 != notifier }}
+                    then:
+                      - action: "{{ notifier_2 }}"
+                        data:
+                          message: clear_notification
+                          data:
+                            tag: "{{ reply_tag }}"
               - conditions:
                   - condition: template
                     value_template: "{{ reply_action == reply_no }}"
@@ -418,6 +448,25 @@ actions:
                     title: "{{ yes_button }}"
                   - action: "{{ cycle_no }}"
                     title: "{{ no_button }}"
+          - if:
+              - condition: template
+                value_template: >-
+                  {{ notifier_2 | trim != '' and notifier_2 != notifier }}
+            then:
+              - action: "{{ notifier_2 }}"
+                data:
+                  title: "{{ reminder_title }}"
+                  message: |-
+                    {{ reminder_message }}{{ cycle_names | trim }}
+
+                    {{ confirmation_question }}
+                  data:
+                    tag: "{{ cycle_tag }}"
+                    actions:
+                      - action: "{{ cycle_yes }}"
+                        title: "{{ yes_button }}"
+                      - action: "{{ cycle_no }}"
+                        title: "{{ no_button }}"
 
 mode: queued
 max: 20
