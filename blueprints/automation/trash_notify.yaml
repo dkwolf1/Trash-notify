@@ -1,0 +1,407 @@
+blueprint:
+  name: "Trash Notify — afvalherinnering met bevestiging"
+  description: >-
+    Uitgebreide afvalherinnering met optionele Ja/Nee-acties en herhalingen.
+    De bevestiging en het volgende notificatiemoment worden in één input_text
+    opgeslagen, zodat de cyclus na een Home Assistant Core-herstart of
+    herladen van automatiseringen hervat kan worden. Voor bevestigingen is
+    de Home Assistant Companion App (iOS of Android) nodig.
+    Gebaseerd op https://community.home-assistant.io/t/garbage-reminder/284213
+  domain: automation
+  author: dkwolf1
+  source_url: https://github.com/dkwolf1/Trash-notify/blob/main/blueprints/automation/dkwolf1/trash_notify.yaml
+  homeassistant:
+    min_version: "2026.10.0"
+  input:
+    planning:
+      name: Planning
+      icon: mdi:calendar-clock
+      input:
+        reminder_time:
+          name: Tijdstip herinnering
+          description: Bijvoorbeeld 18:00, de avond vóór de ophaaldag.
+          default: "18:00:00"
+          selector:
+            time: {}
+        day_offset:
+          name: Aantal dagen vóór ophalen
+          description: 1 = een dag vooraf, 0 = op de ophaaldag.
+          default: 1
+          selector:
+            number:
+              min: 0
+              max: 7
+              step: 1
+              mode: box
+        date_format:
+          name: Datumformaat van de sensoren
+          description: Bijvoorbeeld %Y-%m-%d.
+          default: "%Y-%m-%d"
+          selector:
+            text: {}
+    sensors:
+      name: Afvalkalender
+      icon: mdi:trash-can-outline
+      input:
+        garbage_sensor_1:
+          name: Afvalsensor 1
+          description: De sensorstatus moet de volgende ophaaldatum bevatten.
+          default: ""
+          selector:
+            entity:
+              filter:
+                - domain: sensor
+        garbage_sensor_2:
+          name: Afvalsensor 2
+          default: ""
+          selector:
+            entity:
+              filter:
+                - domain: sensor
+        garbage_sensor_3:
+          name: Afvalsensor 3
+          default: ""
+          selector:
+            entity:
+              filter:
+                - domain: sensor
+        garbage_sensor_4:
+          name: Afvalsensor 4
+          default: ""
+          selector:
+            entity:
+              filter:
+                - domain: sensor
+    notification:
+      name: Notificaties
+      icon: mdi:cellphone-message
+      input:
+        notifier:
+          name: Notificatieactie
+          description: >-
+            Bijvoorbeeld notify.mobile_app_iphone_dennis of een notify-groep
+            met Companion App-telefoons. Voor Ja/Nee zijn actieknoppen nodig.
+          default: notify.notify
+          selector:
+            text: {}
+        reminder_title:
+          name: Titel
+          default: Afvalherinnering
+          selector:
+            text: {}
+        reminder_message:
+          name: Tekst vóór de afvallijst
+          default: "De volgende container(s) worden opgehaald: "
+          selector:
+            text: {}
+    confirmation:
+      name: Bevestiging en herhalingen
+      icon: mdi:check-circle-outline
+      collapsed: true
+      input:
+        confirmation_enabled:
+          name: Vraag om Ja/Nee-bevestiging
+          description: Uit = een gewone eenmalige melding, zonder helper.
+          default: false
+          selector:
+            boolean: {}
+        state_helper:
+          name: Statusopslag voor bevestigingen
+          description: >-
+            Maak één input_text-helper aan (maximaal 255 tekens, géén initial)
+            en selecteer die hier. Verplicht wanneer bevestiging aan staat.
+            Gebruik een aparte helper per Trash Notify-automatisering.
+          default: ""
+          selector:
+            entity:
+              filter:
+                - domain: input_text
+        confirmation_question:
+          name: Vraag op de telefoon
+          default: Staat de container al aan de weg?
+          selector:
+            text: {}
+        reminder_interval_minutes:
+          name: Herhaalinterval (minuten)
+          description: 10 = tien minuten, 60 = één uur, 120 = twee uur.
+          default: 60
+          selector:
+            number:
+              min: 1
+              max: 720
+              step: 1
+              mode: box
+        max_notifications:
+          name: Maximum aantal meldingen
+          description: >-
+            Inclusief de eerste melding. Na het maximum wordt niet meer
+            automatisch herhaald; de laatste Ja-knop blijft bruikbaar.
+          default: 8
+          selector:
+            number:
+              min: 1
+              max: 30
+              step: 1
+              mode: box
+        yes_button:
+          name: Tekst knop Ja
+          default: Ja, staat buiten
+          selector:
+            text: {}
+        no_button:
+          name: Tekst knop Nee
+          default: Nee, herinner later
+          selector:
+            text: {}
+
+variables:
+  garbage_sensor_1: !input garbage_sensor_1
+  garbage_sensor_2: !input garbage_sensor_2
+  garbage_sensor_3: !input garbage_sensor_3
+  garbage_sensor_4: !input garbage_sensor_4
+  reminder_time: !input reminder_time
+  day_offset: !input day_offset
+  date_format: !input date_format
+  reminder_title: !input reminder_title
+  reminder_message: !input reminder_message
+  confirmation_enabled: !input confirmation_enabled
+  state_helper: !input state_helper
+  confirmation_question: !input confirmation_question
+  reminder_interval_minutes: !input reminder_interval_minutes
+  max_notifications: !input max_notifications
+  yes_button: !input yes_button
+  no_button: !input no_button
+
+  # Identifies the calendar day on which this reminder was started.
+  today_key: "{{ now().strftime('%Y-%m-%d') }}"
+  target_date: "{{ (now() + timedelta(days=day_offset | int)).strftime('%Y-%m-%d') }}"
+  sensor_target: "{{ (now() + timedelta(days=day_offset | int)).strftime(date_format) }}"
+  due_mask: >-
+    {% set ns = namespace(mask=0) %}
+    {% for e in [garbage_sensor_1, garbage_sensor_2,
+                 garbage_sensor_3, garbage_sensor_4] %}
+      {% if e and states(e) == sensor_target %}
+        {% set ns.mask = ns.mask + 2 ** loop.index0 %}
+      {% endif %}
+    {% endfor %}
+    {{ ns.mask }}
+  due_names: >-
+    {% set ns = namespace(names=[]) %}
+    {% for e in [garbage_sensor_1, garbage_sensor_2,
+                 garbage_sensor_3, garbage_sensor_4] %}
+      {% if e and states(e) == sensor_target %}
+        {% set ns.names = ns.names + [state_attr(e, 'friendly_name') or e] %}
+      {% endif %}
+    {% endfor %}
+    {{ ns.names | join(', ') }}
+
+triggers:
+  - trigger: time
+    at: !input reminder_time
+    id: daily
+  # No long-running delays or waits: ticks can continue after restarts/reloads.
+  - trigger: time_pattern
+    minutes: "/1"
+    id: tick
+  - trigger: homeassistant
+    event: start
+    id: startup
+  - trigger: event
+    event_type: mobile_app_notification_action
+    id: reply
+
+conditions: []
+
+actions:
+  # Simple mode: preserve the original one-shot reminder semantics.
+  - if:
+      - condition: template
+        value_template: >-
+          {{ not confirmation_enabled and trigger.id == 'daily'
+             and (due_mask | int) > 0 }}
+    then:
+      - action: !input notifier
+        data:
+          title: "{{ reminder_title }}"
+          message: "{{ reminder_message }}{{ due_names | trim }}"
+
+  # Confirmation mode requires a persistent input_text entity.
+  - if:
+      - condition: template
+        value_template: "{{ confirmation_enabled and trigger.id != 'reply' }}"
+    then:
+      - if:
+          - condition: template
+            value_template: >-
+              {{ not state_helper or not state_helper.startswith('input_text.')
+                 or states(state_helper) in ['unknown', 'unavailable'] }}
+        then:
+          - stop: >-
+              Selecteer een beschikbare input_text-helper bij
+              'Statusopslag voor bevestigingen'.
+            error: true
+
+  # Start a new cycle at the reminder time. If HA was offline at that time,
+  # a periodic tick or HA startup can also start the missed cycle today.
+  - if:
+      - condition: template
+        value_template: >-
+          {{ confirmation_enabled and trigger.id in ['daily', 'tick', 'startup']
+             and (due_mask | int) > 0
+             and now().strftime('%H:%M:%S') >= reminder_time
+             and (states(state_helper) | from_json({})).get('day') != today_key }}
+    then:
+      - action: input_text.set_value
+        target:
+          entity_id: "{{ state_helper }}"
+        data:
+          value: >-
+            {{ {'day': today_key, 'due': target_date,
+                'mask': due_mask | int, 'status': 'pending',
+                'sent': 0, 'next': as_timestamp(now()) | int} | to_json }}
+      - action: homeassistant.save_persistent_states
+
+  # A reply is processed in a fresh run, not an ephemeral wait_for_trigger.
+  # Action IDs contain the helper ID + collection date to reject stale replies.
+  - if:
+      - condition: template
+        value_template: >-
+          {{ confirmation_enabled and trigger.id == 'reply'
+             and state_helper and states(state_helper) not in
+             ['unknown', 'unavailable'] }}
+    then:
+      - variables:
+          reply_state: "{{ states(state_helper) | from_json({}) }}"
+      - if:
+          - condition: template
+            value_template: "{{ reply_state.get('status') == 'pending' }}"
+        then:
+          - variables:
+              reply_due: "{{ reply_state.get('due', '') }}"
+              reply_yes: >-
+                {{ 'TRASH_NOTIFY_YES_' ~ (state_helper | replace('.', '_'))
+                   ~ '_' ~ (reply_due | replace('-', '')) }}
+              reply_no: >-
+                {{ 'TRASH_NOTIFY_NO_' ~ (state_helper | replace('.', '_'))
+                   ~ '_' ~ (reply_due | replace('-', '')) }}
+              reply_action: "{{ trigger.event.data.get('action', '') }}"
+              reply_tag: >-
+                {{ 'trash_notify_' ~ (state_helper | replace('.', '_'))
+                   ~ '_' ~ (reply_due | replace('-', '')) }}
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ reply_action == reply_yes }}"
+                sequence:
+                  - action: input_text.set_value
+                    target:
+                      entity_id: "{{ state_helper }}"
+                    data:
+                      value: >-
+                        {{ {'day': reply_state.get('day'),
+                            'due': reply_state.get('due'),
+                            'mask': reply_state.get('mask') | int,
+                            'status': 'confirmed',
+                            'sent': reply_state.get('sent', 0) | int,
+                            'next': 0} | to_json }}
+                  - action: homeassistant.save_persistent_states
+                  - action: !input notifier
+                    data:
+                      message: clear_notification
+                      data:
+                        tag: "{{ reply_tag }}"
+              - conditions:
+                  - condition: template
+                    value_template: "{{ reply_action == reply_no }}"
+                sequence:
+                  # Always count the delay from the moment 'No' was tapped.
+                  - action: input_text.set_value
+                    target:
+                      entity_id: "{{ state_helper }}"
+                    data:
+                      value: >-
+                        {{ {'day': reply_state.get('day'),
+                            'due': reply_state.get('due'),
+                            'mask': reply_state.get('mask') | int,
+                            'status': 'pending',
+                            'sent': reply_state.get('sent', 0) | int,
+                            'next': (as_timestamp(now()) | int)
+                                    + (reminder_interval_minutes | int) * 60}
+                           | to_json }}
+                  - action: homeassistant.save_persistent_states
+
+  # Only schedule triggers send reminders. Reply events never send instantly.
+  - if:
+      - condition: template
+        value_template: >-
+          {{ confirmation_enabled and trigger.id in ['daily', 'tick', 'startup']
+             and state_helper and states(state_helper) not in
+             ['unknown', 'unavailable'] }}
+    then:
+      - variables:
+          cycle: "{{ states(state_helper) | from_json({}) }}"
+      - if:
+          - condition: template
+            value_template: >-
+              {{ cycle.get('status') == 'pending'
+                 and cycle.get('due', '') >= now().strftime('%Y-%m-%d')
+                 and (cycle.get('sent', 0) | int) < (max_notifications | int)
+                 and (cycle.get('next', 0) | int) <= (as_timestamp(now()) | int) }}
+        then:
+          - variables:
+              cycle_mask: "{{ cycle.get('mask', 0) | int }}"
+              cycle_names: >-
+                {% set entities = [garbage_sensor_1, garbage_sensor_2,
+                                   garbage_sensor_3, garbage_sensor_4] %}
+                {% set ns = namespace(names=[]) %}
+                {% for i in range(4) %}
+                  {% if ((cycle_mask | int) // (2 ** i)) % 2 == 1 %}
+                    {% set ns.names = ns.names + [
+                      state_attr(entities[i], 'friendly_name') or entities[i]
+                    ] %}
+                  {% endif %}
+                {% endfor %}
+                {{ ns.names | join(', ') }}
+              cycle_due: "{{ cycle.get('due', '') }}"
+              cycle_yes: >-
+                {{ 'TRASH_NOTIFY_YES_' ~ (state_helper | replace('.', '_'))
+                   ~ '_' ~ (cycle_due | replace('-', '')) }}
+              cycle_no: >-
+                {{ 'TRASH_NOTIFY_NO_' ~ (state_helper | replace('.', '_'))
+                   ~ '_' ~ (cycle_due | replace('-', '')) }}
+              cycle_tag: >-
+                {{ 'trash_notify_' ~ (state_helper | replace('.', '_'))
+                   ~ '_' ~ (cycle_due | replace('-', '')) }}
+          # Save the next due time before notifying. A restart cannot reset
+          # the interval and cause a second notification immediately.
+          - action: input_text.set_value
+            target:
+              entity_id: "{{ state_helper }}"
+            data:
+              value: >-
+                {{ {'day': cycle.get('day'),
+                    'due': cycle.get('due'), 'mask': cycle_mask | int,
+                    'status': 'pending',
+                    'sent': (cycle.get('sent', 0) | int) + 1,
+                    'next': (as_timestamp(now()) | int)
+                            + (reminder_interval_minutes | int) * 60}
+                   | to_json }}
+          - action: homeassistant.save_persistent_states
+          - action: !input notifier
+            data:
+              title: "{{ reminder_title }}"
+              message: |-
+                {{ reminder_message }}{{ cycle_names | trim }}
+
+                {{ confirmation_question }}
+              data:
+                tag: "{{ cycle_tag }}"
+                actions:
+                  - action: "{{ cycle_yes }}"
+                    title: "{{ yes_button }}"
+                  - action: "{{ cycle_no }}"
+                    title: "{{ no_button }}"
+
+mode: queued
+max: 20
+max_exceeded: silent
