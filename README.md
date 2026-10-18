@@ -4,7 +4,7 @@
 
 A **Core restart or automation reload does not reset an active reminder**: the next reminder time, collection date, reminder count and confirmation are stored in one persistent `input_text` helper. A minute-based trigger resumes the cycle after startup. No extra waste sensors, template sensors, AppDaemon scripts, or custom integrations are needed.
 
-> **Version:** 0.2.2 — candidate for testing on Home Assistant OS 2026.10 or later. The YAML has been statically checked; phone notifications and restarts still need to be verified on a real Home Assistant installation before labeling this stable.
+> **Version:** 0.2.3 — candidate for testing on Home Assistant OS 2026.10 or later. The YAML has been statically checked; phone notifications and restarts still need to be verified on a real Home Assistant installation before labeling this stable.
 >
 > **Important:** enabling Yes/No requires **one `input_text` helper per Trash Notify automation**. Simple one-shot mode doesn't require the helper.
 
@@ -14,8 +14,8 @@ A **Core restart or automation reload does not reset an active reminder**: the n
 
 ## Features
 
-- Supports up to four waste sensors; their **state** must contain a collection date (default format `%Y-%m-%d`).
-- Configure the first notification time and number of days before pickup (`1` = tomorrow).
+- Supports up to four waste sensors; their **state** must contain a collection date (default format `%d-%m-%Y`).
+- Configure the first notification time and number of days before pickup (`1` = tomorrow). The date format applies to sensor states; an existing automation with a saved date-format input keeps its selected value until you change it.
 - Optional actionable iOS/Android notifications: **Yes** confirms the bins are out and clears the notification; **No** postpones the next reminder from the time you tap it.
 - No response: the next reminder arrives after the configured interval (e.g. 10, 60 or 120 minutes), up to a configurable maximum.
 - Supports **two independently configured Companion App phones** without creating a notification group (second phone optional). A mobile notification group remains possible. **Yes on either phone** confirms the cycle and clears both notifications.
