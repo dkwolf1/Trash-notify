@@ -86,10 +86,6 @@ Both devices receive the same action IDs and notification tag. Tapping **Yes** o
 - If you manually edit or reset the `input_text` state during a cycle, the blueprint may start a new cycle.
 - The first one-shot notification (confirmation disabled) retains the original trigger-at-time behavior. It is not replayed following a missed trigger.
 
-## Migration from the prototype
-
-Version 0.1 used the filename `garbage_reminder_pro.yaml` and the display name **Garbage Reminder Pro**. Version 0.2 is renamed to **Trash Notify** and uses `trash_notify.yaml` to match the repository. If you installed v0.1, create a new automation from the new blueprint, configure the helper, and disable/delete the previous automation to avoid double notifications. Keep existing waste sensor IDs; only the blueprint's **file path** changes.
-
 ## Credits
 
 Inspired by the original [Garbage reminder Home Assistant Community blueprint](https://community.home-assistant.io/t/garbage-reminder/284213). This project extends the original date-based matching idea with reply persistence and automatic retries.
