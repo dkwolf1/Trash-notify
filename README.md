@@ -4,7 +4,7 @@
 
 A **Core restart or automation reload does not reset an active reminder**: the next reminder time, collection date, reminder count and confirmation are stored in one persistent `input_text` helper. A minute-based trigger resumes the cycle after startup. No extra waste sensors, template sensors, AppDaemon scripts, or custom integrations are needed.
 
-> **Version:** 0.2.1 — candidate for testing on Home Assistant OS 2026.10 or later. The YAML has been statically checked; phone notifications and restarts still need to be verified on a real Home Assistant installation before labeling this stable.
+> **Version:** 0.2.2 — candidate for testing on Home Assistant OS 2026.10 or later. The YAML has been statically checked; phone notifications and restarts still need to be verified on a real Home Assistant installation before labeling this stable.
 >
 > **Important:** enabling Yes/No requires **one `input_text` helper per Trash Notify automation**. Simple one-shot mode doesn't require the helper.
 
@@ -31,7 +31,9 @@ A **Core restart or automation reload does not reset an active reminder**: the n
 2. For **Yes/No mode**, create a Text helper in **Settings → Devices & services → Helpers → Create helper → Text**:
    - Name: `Trash Notify State`
    - Entity ID (suggested): `input_text.trash_notify_state`
+   - **Minimum length: 0 characters**.
    - **Maximum length: 255 characters** (the stored JSON is longer than the default limit of 100).
+   - Leave any validation pattern empty.
    - Do **not** specify an `initial` value if configuring it via YAML, so the previous state is restored automatically.
 3. Alternatively create the helper in `configuration.yaml`:
 
@@ -39,6 +41,7 @@ A **Core restart or automation reload does not reset an active reminder**: the n
    input_text:
      trash_notify_state:
        name: Trash Notify State
+      min: 0
        max: 255
        # Important: no `initial:` property
    ```
@@ -80,8 +83,10 @@ Both devices receive the same action IDs and notification tag. Tapping **Yes** o
 - A **single `input_text` entity stores one active collection cycle**. If pickups on consecutive days overlap before the earlier reminder is confirmed, a new daily reminder can supersede the earlier cycle. Use separate automations/helpers if you need independent overlapping cycles.
 - Grouping several waste types for the same pickup day results in a **single Yes/No** decision for all those bins.
 - State restoration relies on a valid, available `input_text` helper with `max: 255`; when missing, confirmation mode deliberately stops with an error instead of silently losing its state.
+- The helper must also have `min: 0` and no validation pattern. Invalid or incomplete JSON in the helper stops scheduled processing with an error so the saved cycle is not silently replaced.
 - Checks run at one-minute resolution. Following a restart or automated time check, a reminder can arrive up to approximately one minute after the due time (plus notification delivery delay).
-- With unexpected power loss at the exact moment a notification is sent, it is impossible to guarantee exactly-once delivery: state is saved **before** sending to favor avoiding duplicate notifications. A send interrupted by a crash is retried at the next configured interval.
+- With unexpected power loss at the exact moment a notification is sent, it is impossible to guarantee exactly-once delivery: state is saved **before** sending to favor avoiding duplicate notifications. A send interrupted by a crash, or a failed notification service, consumes one send attempt; the next attempt occurs at the configured interval if the maximum has not been reached.
+- Notifications and notification clearing run in independent parallel branches for the two phones. If one service fails, Home Assistant still attempts the other.
 - Reminder cycles stop sending after the end of the collection day, even if the maximum number has not been reached.
 - If you manually edit or reset the `input_text` state during a cycle, the blueprint may start a new cycle.
 - The first one-shot notification (confirmation disabled) retains the original trigger-at-time behavior. It is not replayed following a missed trigger.
