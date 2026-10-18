@@ -9,7 +9,7 @@ blueprint:
     Gebaseerd op https://community.home-assistant.io/t/garbage-reminder/284213
   domain: automation
   author: dkwolf1
-  source_url: https://github.com/dkwolf1/Trash-notify/blob/main/blueprints/automation/dkwolf1/trash_notify.yaml
+  source_url: https://github.com/dkwolf1/Trash-notify/blob/main/blueprints/automation/trash_notify.yaml
   homeassistant:
     min_version: "2026.10.0"
   input:
