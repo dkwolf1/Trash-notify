@@ -231,19 +231,20 @@ actions:
           {{ not confirmation_enabled and trigger.id == 'daily'
              and (due_mask | int) > 0 }}
     then:
-      - action: !input notifier
-        data:
-          title: "{{ reminder_title }}"
-          message: "{{ reminder_message }}{{ due_names | trim }}"
-      - if:
-          - condition: template
-            value_template: >-
-              {{ notifier_2 | trim != '' and notifier_2 != notifier }}
-        then:
-          - action: "{{ notifier_2 }}"
+      - parallel:
+          - action: !input notifier
             data:
               title: "{{ reminder_title }}"
               message: "{{ reminder_message }}{{ due_names | trim }}"
+          - if:
+              - condition: template
+                value_template: >-
+                  {{ notifier_2 | trim != '' and notifier_2 != notifier }}
+            then:
+              - action: "{{ notifier_2 }}"
+                data:
+                  title: "{{ reminder_title }}"
+                  message: "{{ reminder_message }}{{ due_names | trim }}"
 
   # Confirmation mode requires a persistent input_text entity.
   - if:
@@ -261,6 +262,17 @@ actions:
               Selecteer een beschikbare input_text-helper bij
               'Statusopslag voor bevestigingen'.
             error: true
+      - if:
+          - condition: template
+            value_template: >-
+              {{ (state_attr(state_helper, 'max') | int(0)) != 255
+                 or (state_attr(state_helper, 'min') | int(0)) != 0
+                 or state_attr(state_helper, 'pattern') not in [none, ''] }}
+        then:
+          - stop: >-
+              Stel de input_text-helper in op minimum 0, maximum 255
+              tekens en geen validatiepatroon.
+            error: true
 
   # Initialise a newly created, empty text helper automatically.
   # Never overwrite a valid saved reminder cycle.
@@ -277,6 +289,34 @@ actions:
         data:
           value: "{}"
       - action: homeassistant.save_persistent_states
+
+  # A damaged or manually edited helper must not silently start another cycle.
+  - if:
+      - condition: template
+        value_template: >-
+          {% set saved = states(state_helper) | from_json(none) %}
+          {{ confirmation_enabled and trigger.id != 'reply'
+             and state_helper and states(state_helper) not in
+             ['unknown', 'unavailable', '']
+             and (
+               saved is not mapping
+               or (
+                 saved is mapping and saved | count > 0
+                 and (
+                   saved.get('day') is not string
+                   or saved.get('due') is not string
+                   or saved.get('mask') is not number
+                   or saved.get('status') not in ['pending', 'confirmed']
+                   or saved.get('sent') is not number
+                   or saved.get('next') is not number
+                 )
+               )
+             ) }}
+    then:
+      - stop: >-
+          De statusopslag bevat geen geldig JSON-object. Controleer de
+          input_text-helper voordat je de automatisering opnieuw start.
+        error: true
 
   # Start a new cycle at the reminder time. If HA was offline at that time,
   # a periodic tick or HA startup can also start the missed cycle today.
@@ -305,13 +345,20 @@ actions:
         value_template: >-
           {{ confirmation_enabled and trigger.id == 'reply'
              and state_helper and states(state_helper) not in
-             ['unknown', 'unavailable'] }}
+             ['unknown', 'unavailable']
+             and (states(state_helper) | from_json(none)) is mapping }}
     then:
       - variables:
           reply_state: "{{ states(state_helper) | from_json({}) }}"
       - if:
           - condition: template
-            value_template: "{{ reply_state.get('status') == 'pending' }}"
+            value_template: >-
+              {{ reply_state.get('status') == 'pending'
+                 and reply_state.get('day') is string
+                 and reply_state.get('due') is string
+                 and reply_state.get('mask') is number
+                 and reply_state.get('sent') is number
+                 and reply_state.get('next') is number }}
         then:
           - variables:
               reply_due: "{{ reply_state.get('due', '') }}"
@@ -342,21 +389,22 @@ actions:
                             'sent': reply_state.get('sent', 0) | int,
                             'next': 0} | to_json }}
                   - action: homeassistant.save_persistent_states
-                  - action: !input notifier
-                    data:
-                      message: clear_notification
-                      data:
-                        tag: "{{ reply_tag }}"
-                  - if:
-                      - condition: template
-                        value_template: >-
-                          {{ notifier_2 | trim != '' and notifier_2 != notifier }}
-                    then:
-                      - action: "{{ notifier_2 }}"
+                  - parallel:
+                      - action: !input notifier
                         data:
                           message: clear_notification
                           data:
                             tag: "{{ reply_tag }}"
+                      - if:
+                          - condition: template
+                            value_template: >-
+                              {{ notifier_2 | trim != '' and notifier_2 != notifier }}
+                        then:
+                          - action: "{{ notifier_2 }}"
+                            data:
+                              message: clear_notification
+                              data:
+                                tag: "{{ reply_tag }}"
               - conditions:
                   - condition: template
                     value_template: "{{ reply_action == reply_no }}"
@@ -434,26 +482,8 @@ actions:
                             + (reminder_interval_minutes | int) * 60}
                    | to_json }}
           - action: homeassistant.save_persistent_states
-          - action: !input notifier
-            data:
-              title: "{{ reminder_title }}"
-              message: |-
-                {{ reminder_message }}{{ cycle_names | trim }}
-
-                {{ confirmation_question }}
-              data:
-                tag: "{{ cycle_tag }}"
-                actions:
-                  - action: "{{ cycle_yes }}"
-                    title: "{{ yes_button }}"
-                  - action: "{{ cycle_no }}"
-                    title: "{{ no_button }}"
-          - if:
-              - condition: template
-                value_template: >-
-                  {{ notifier_2 | trim != '' and notifier_2 != notifier }}
-            then:
-              - action: "{{ notifier_2 }}"
+          - parallel:
+              - action: !input notifier
                 data:
                   title: "{{ reminder_title }}"
                   message: |-
@@ -467,6 +497,25 @@ actions:
                         title: "{{ yes_button }}"
                       - action: "{{ cycle_no }}"
                         title: "{{ no_button }}"
+              - if:
+                  - condition: template
+                    value_template: >-
+                      {{ notifier_2 | trim != '' and notifier_2 != notifier }}
+                then:
+                  - action: "{{ notifier_2 }}"
+                    data:
+                      title: "{{ reminder_title }}"
+                      message: |-
+                        {{ reminder_message }}{{ cycle_names | trim }}
+
+                        {{ confirmation_question }}
+                      data:
+                        tag: "{{ cycle_tag }}"
+                        actions:
+                          - action: "{{ cycle_yes }}"
+                            title: "{{ yes_button }}"
+                          - action: "{{ cycle_no }}"
+                            title: "{{ no_button }}"
 
 mode: queued
 max: 20
