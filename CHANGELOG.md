@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1 — 2026-10-18
+
+- Added an optional second mobile notify service, configured separately from the first phone.
+- Both phones receive the same Yes/No choices; Yes on either device confirms the shared cycle and clears both notifications.
+- Supports dual-device delivery in both simple and confirmation modes without requiring a notification group or extra helper.
+- Fixed the README import button to point to the actual blueprint file.
+
 ## 0.2.0 — 2026-10-18
 
 - Renamed project/blueprint to **Trash Notify** (`trash_notify.yaml`) to match the GitHub repository.
