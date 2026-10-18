@@ -10,7 +10,7 @@ A **Core restart or automation reload does not reset an active reminder**: the n
 
 ## Blueprint
 
-[Import blueprint into Home Assistant](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fdkwolf1%2FTrash-notify%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fdkwolf1%2Ftrash_notify.yaml) · [View YAML](blueprints/automation/dkwolf1/trash_notify.yaml)
+[Import blueprint into Home Assistant](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fdkwolf1%2FTrash-notify%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fdkwolf1%2Ftrash_notify.yaml) · [View YAML](blueprints/automation/trash_notify.yaml)
 
 ## Features
 
@@ -27,7 +27,7 @@ A **Core restart or automation reload does not reset an active reminder**: the n
 
 ## Installation
 
-1. Click **Import blueprint into Home Assistant** above, or go to **Settings → Automations & scenes → Blueprints → Import Blueprint** and paste the [blueprint URL](https://github.com/dkwolf1/Trash-notify/blob/main/blueprints/automation/dkwolf1/trash_notify.yaml). For manual installation, download the YAML and place it at `/config/blueprints/automation/dkwolf1/trash_notify.yaml`.
+1. Click **Import blueprint into Home Assistant** above, or go to **Settings → Automations & scenes → Blueprints → Import Blueprint** and paste the [blueprint URL](https://github.com/dkwolf1/Trash-notify/blob/main/blueprints/automation/trash_notify.yaml). For manual installation, download the YAML and place it at `/config/blueprints/automation/trash_notify.yaml`.
 2. For **Yes/No mode**, create a Text helper in **Settings → Devices & services → Helpers → Create helper → Text**:
    - Name: `Trash Notify State`
    - Entity ID (suggested): `input_text.trash_notify_state`
