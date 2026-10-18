@@ -8,13 +8,9 @@ A **Core restart or automation reload does not reset an active reminder**: the n
 >
 > **Important:** enabling Yes/No requires **one `input_text` helper per Trash Notify automation**. Simple one-shot mode doesn't require the helper.
 
-## Blueprint file
+## Blueprint
 
-`blueprints/automation/dkwolf1/trash_notify.yaml`
-
-[Import blueprint into Home Assistant](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fdkwolf1%2FTrash-notify%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fdkwolf1%2Ftrash_notify.yaml)
-
-The import link becomes usable after this YAML file has been pushed to the repository's `main` branch.
+[Import blueprint into Home Assistant](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fdkwolf1%2FTrash-notify%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fdkwolf1%2Ftrash_notify.yaml) · [View YAML](blueprints/automation/dkwolf1/trash_notify.yaml)
 
 ## Features
 
@@ -31,7 +27,7 @@ The import link becomes usable after this YAML file has been pushed to the repos
 
 ## Installation
 
-1. Upload [`trash_notify.yaml`](blueprints/automation/dkwolf1/trash_notify.yaml) to your GitHub repository as `blueprints/automation/dkwolf1/trash_notify.yaml`, or place it at `/config/blueprints/automation/dkwolf1/trash_notify.yaml` on Home Assistant OS.
+1. Click **Import blueprint into Home Assistant** above, or go to **Settings → Automations & scenes → Blueprints → Import Blueprint** and paste the [blueprint URL](https://github.com/dkwolf1/Trash-notify/blob/main/blueprints/automation/dkwolf1/trash_notify.yaml). For manual installation, download the YAML and place it at `/config/blueprints/automation/dkwolf1/trash_notify.yaml`.
 2. For **Yes/No mode**, create a Text helper in **Settings → Devices & services → Helpers → Create helper → Text**:
    - Name: `Trash Notify State`
    - Entity ID (suggested): `input_text.trash_notify_state`
@@ -96,4 +92,4 @@ Version 0.1 used the filename `garbage_reminder_pro.yaml` and the display name *
 
 ## Credits
 
-Inspired by the original [Garbage reminder Home Assistant Community blueprint](https://community.home-assistant.io/t/garbage-reminder/284213). This project extends the original date-based matching idea with reply persistence and automatic retries. Before adding a LICENSE file, verify the original blueprint's reuse terms if distributing derived source.
+Inspired by the original [Garbage reminder Home Assistant Community blueprint](https://community.home-assistant.io/t/garbage-reminder/284213). This project extends the original date-based matching idea with reply persistence and automatic retries.
