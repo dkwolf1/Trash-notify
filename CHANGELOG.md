@@ -4,6 +4,7 @@
 
 - Changed the default waste-sensor date format to `%d-%m-%Y` and updated the setup documentation.
 - Kept the internally stored pickup date in ISO format for scheduling and reply IDs.
+- Added a Dutch README, documented confirmation and same-day retesting, and corrected installation examples.
 
 ## 0.2.2 — 2026-10-18
 
