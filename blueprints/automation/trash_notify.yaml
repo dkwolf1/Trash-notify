@@ -1,7 +1,7 @@
 blueprint:
   name: "Trash Notify — afvalherinnering met bevestiging"
   description: >-
-    Uitgebreide afvalherinnering met optionele Ja/Nee-acties en herhalingen.
+    Afvalherinnering met optionele ochtendwaarschuwing, Ja/Nee-acties en herhalingen.
     De bevestiging en het volgende notificatiemoment worden in één input_text
     opgeslagen, zodat de cyclus na een Home Assistant Core-herstart of
     herladen van automatiseringen hervat kan worden. Voor bevestigingen is
@@ -37,6 +37,32 @@ blueprint:
           name: Datumformaat van de sensoren
           description: Bijvoorbeeld %d-%m-%Y.
           default: "%d-%m-%Y"
+          selector:
+            text: {}
+    morning_warning:
+      name: Ochtendwaarschuwing
+      icon: mdi:weather-sunny
+      input:
+        morning_warning_enabled:
+          name: Stuur een waarschuwing in de ochtend
+          description: Een gewone melding zonder Ja/Nee, vóór de avondherinnering.
+          default: false
+          selector:
+            boolean: {}
+        morning_warning_time:
+          name: Tijdstip ochtendwaarschuwing
+          description: Kies een tijd vóór het avondtijdstip, bijvoorbeeld 09:00.
+          default: "09:00:00"
+          selector:
+            time: {}
+        morning_warning_title:
+          name: Titel ochtendwaarschuwing
+          default: Afval vanavond buiten zetten
+          selector:
+            text: {}
+        morning_warning_message:
+          name: Tekst vóór de afvallijst in de ochtend
+          default: "Zet vanavond de volgende container(s) aan de weg: "
           selector:
             text: {}
     sensors:
@@ -169,6 +195,10 @@ variables:
   garbage_sensor_3: !input garbage_sensor_3
   garbage_sensor_4: !input garbage_sensor_4
   reminder_time: !input reminder_time
+  morning_warning_enabled: !input morning_warning_enabled
+  morning_warning_time: !input morning_warning_time
+  morning_warning_title: !input morning_warning_title
+  morning_warning_message: !input morning_warning_message
   day_offset: !input day_offset
   date_format: !input date_format
   notifier: !input notifier
@@ -210,6 +240,9 @@ triggers:
   - trigger: time
     at: !input reminder_time
     id: daily
+  - trigger: time
+    at: !input morning_warning_time
+    id: morning
   # No long-running delays or waits: ticks can continue after restarts/reloads.
   - trigger: time_pattern
     minutes: "/1"
@@ -224,6 +257,28 @@ triggers:
 conditions: []
 
 actions:
+  # Optional morning heads-up: no Yes/No actions and no helper state changes.
+  - if:
+      - condition: template
+        value_template: >-
+          {{ morning_warning_enabled and trigger.id == 'morning'
+             and (due_mask | int) > 0 }}
+    then:
+      - parallel:
+          - action: !input notifier
+            data:
+              title: "{{ morning_warning_title }}"
+              message: "{{ morning_warning_message }}{{ due_names | trim }}"
+          - if:
+              - condition: template
+                value_template: >-
+                  {{ notifier_2 | trim != '' and notifier_2 != notifier }}
+            then:
+              - action: "{{ notifier_2 }}"
+                data:
+                  title: "{{ morning_warning_title }}"
+                  message: "{{ morning_warning_message }}{{ due_names | trim }}"
+
   # Simple mode: preserve the original one-shot reminder semantics.
   - if:
       - condition: template
@@ -249,7 +304,7 @@ actions:
   # Confirmation mode requires a persistent input_text entity.
   - if:
       - condition: template
-        value_template: "{{ confirmation_enabled and trigger.id != 'reply' }}"
+        value_template: "{{ confirmation_enabled and trigger.id in ['daily', 'tick', 'startup'] }}"
     then:
       - if:
           - condition: template
@@ -279,7 +334,7 @@ actions:
   - if:
       - condition: template
         value_template: >-
-          {{ confirmation_enabled and trigger.id != 'reply'
+          {{ confirmation_enabled and trigger.id in ['daily', 'tick', 'startup']
              and state_helper and (expand(state_helper) | count > 0)
              and states(state_helper) in ['unknown', ''] }}
     then:
@@ -295,7 +350,7 @@ actions:
       - condition: template
         value_template: >-
           {% set saved = states(state_helper) | from_json(none) %}
-          {{ confirmation_enabled and trigger.id != 'reply'
+          {{ confirmation_enabled and trigger.id in ['daily', 'tick', 'startup']
              and state_helper and states(state_helper) not in
              ['unknown', 'unavailable', '']
              and (

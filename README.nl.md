@@ -6,7 +6,7 @@
 
 Een herstart van Home Assistant Core of het herladen van automatiseringen wist een actieve herinnering niet. De volgende herinneringstijd, ophaaldatum, het aantal verzonden meldingen en de bevestiging staan in een blijvende `input_text`-helper. Een controle per minuut hervat de cyclus na het opstarten. Extra afval- of templatesensoren, AppDaemon en aangepaste integraties zijn niet nodig.
 
-> **Versie:** 0.2.3 — testversie voor Home Assistant OS 2026.10 of nieuwer. Eén cyclus met Nee en daarna Ja is op een echte installatie waargenomen. Herstel na een Core-herstart en verzending naar twee toestellen moeten nog in de praktijk worden gecontroleerd voordat deze versie stabiel genoemd kan worden.
+> **Versie:** 0.3.0 — testversie voor Home Assistant OS 2026.10 of nieuwer. Eén cyclus met Nee en daarna Ja is op een echte installatie waargenomen. Herstel na een Core-herstart en verzending naar twee toestellen moeten nog in de praktijk worden gecontroleerd voordat deze versie stabiel genoemd kan worden.
 >
 > **Belangrijk:** voor Ja/Nee is **één `input_text`-helper per Trash Notify-automatisering** nodig. Voor een eenmalige melding zonder bevestiging is geen helper nodig.
 
@@ -17,7 +17,8 @@ Een herstart van Home Assistant Core of het herladen van automatiseringen wist e
 ## Functies
 
 - Ondersteunt maximaal vier afvalsensoren. Hun **status moet exact gelijk zijn aan de ophaaldatum**; het standaardformaat is `%d-%m-%Y`.
-- Je stelt het eerste meldingstijdstip en het aantal dagen vóór ophalen in (`1` betekent morgen). Het datumformaat geldt voor de sensorstatus. Een expliciet opgeslagen datumformaat in een bestaande automatisering verandert niet vanzelf.
+- Je kunt een aparte ochtendwaarschuwing instellen met een eigen tijd, titel en tekst. Die melding heeft geen Ja/Nee-knoppen. Schakel haar in bij **Ochtendwaarschuwing** en kies een tijd vóór de avondherinnering.
+- Je stelt het tijdstip van de avondherinnering en het aantal dagen vóór ophalen in (`1` betekent morgen). Het datumformaat geldt voor de sensorstatus. Een expliciet opgeslagen datumformaat in een bestaande automatisering verandert niet vanzelf.
 - Met de optionele knoppen bevestigt **Ja** dat de container buiten staat en wordt de melding gewist. **Nee** plant de volgende herinnering vanaf het moment waarop je drukt.
 - Zonder antwoord volgt na het ingestelde interval een nieuwe melding, tot het ingestelde maximum.
 - Twee Companion App-telefoons kunnen apart worden ingesteld; de tweede is optioneel. Een notificatiegroep kan ook. **Ja op één telefoon** bevestigt de gezamenlijke cyclus en wist de melding op beide toestellen.
@@ -47,13 +48,20 @@ Een herstart van Home Assistant Core of het herladen van automatiseringen wist e
    ```
 
    Voeg dit toe aan een bestaand `input_text:`-blok als dat er al is. Herlaad daarna de Input Text-integratie of herstart Home Assistant.
-4. Importeer de blueprint of maak er een automatisering van. Kies de afvalsensoren, het eerste meldingstijdstip en **Notificatieapparaat 1** (`notify.mobile_app_*`). Stel eventueel een andere service in bij **Notificatieapparaat 2**.
-5. Schakel **Vraag om Ja/Nee-bevestiging** in, kies de helper bij **Statusopslag voor bevestigingen** en stel het herhaalinterval en het maximum aantal meldingen in.
-6. Schakel een oude afvalherinnering uit om dubbele meldingen te voorkomen.
+4. Importeer de blueprint of maak er een automatisering van. Kies de afvalsensoren, het tijdstip voor de avondherinnering en **Notificatieapparaat 1** (`notify.mobile_app_*`). Stel eventueel een andere service in bij **Notificatieapparaat 2**.
+5. Schakel desgewenst **Stuur een waarschuwing in de ochtend** in bij **Ochtendwaarschuwing**. Kies de tijd, titel en tekst. De ochtendmelding noemt de passende afvalsoorten en heeft geen extra helper nodig.
+6. Schakel **Vraag om Ja/Nee-bevestiging** in, kies de helper bij **Statusopslag voor bevestigingen** en stel het herhaalinterval en het maximum aantal meldingen in.
+7. Schakel een oude afvalherinnering uit om dubbele meldingen te voorkomen.
 
 Importeer de blueprint na wijzigingen in deze repository opnieuw in Home Assistant en herlaad de automatiseringen. Controleer bij bestaande automatiseringen het veld **Datumformaat van de sensoren**: een expliciet opgeslagen oude waarde moet je zelf aanpassen.
 
 Gebruik voor meerdere Trash Notify-automatiseringen **een aparte `input_text`-helper per automatisering**. Anders kunnen de opgeslagen status en knop-ID’s elkaar beïnvloeden.
+
+## Ochtend- en avondmeldingen
+
+Bij de standaardinstelling van één dag vooraf waarschuwt de ochtendmelding voor de containers die **die avond** buiten moeten staan, met ophalen de volgende dag. Zij gebruikt dezelfde datumvergelijking van de sensoren als de avondherinnering. Beide meldingen gaan naar de ingestelde notificatiediensten. De ochtendmelding wordt één keer op haar ingestelde tijd verzonden, zonder knoppen. Zij wijzigt de helper, de avondteller en de Ja/Nee-cyclus niet. **Ja** op de avondmelding bevestigt de ophaalronde, ook als er eerder een ochtendmelding was.
+
+De ochtendmelding is een aparte notificatie en kan zichtbaar blijven nadat de avondmelding is gewist. Staat Home Assistant op het ochtendtijdstip uit, dan vervalt die waarschuwing; de bestaande avondcyclus kan later op dezelfde dag alsnog starten. Voor opnieuw testen op dezelfde dag is alleen de avondtijd wijzigen na **Ja** onvoldoende; zie hieronder.
 
 ## Hoe herinneringen na een herstart werken
 

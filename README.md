@@ -6,7 +6,7 @@
 
 A **Core restart or automation reload does not reset an active reminder**: the next reminder time, collection date, reminder count and confirmation are stored in one persistent `input_text` helper. A minute-based trigger resumes the cycle after startup. No extra waste sensors, template sensors, AppDaemon scripts, or custom integrations are needed.
 
-> **Version:** 0.2.3 — candidate for testing on Home Assistant OS 2026.10 or later. One No → Yes cycle has been observed on a real installation. Core restart recovery and two-device delivery still need live verification before labeling this stable.
+> **Version:** 0.3.0 — candidate for testing on Home Assistant OS 2026.10 or later. One No → Yes cycle has been observed on a real installation. Core restart recovery and two-device delivery still need live verification before labeling this stable.
 >
 > **Important:** enabling Yes/No requires **one `input_text` helper per Trash Notify automation**. Simple one-shot mode doesn't require the helper.
 
@@ -17,7 +17,8 @@ A **Core restart or automation reload does not reset an active reminder**: the n
 ## Features
 
 - Supports up to four waste sensors; their **state** must equal a collection date (default format `%d-%m-%Y`).
-- Configure the first notification time and number of days before pickup (`1` = tomorrow). The date format applies to sensor states; an existing automation with a saved date-format input keeps its selected value until you change it.
+- Configure an optional morning heads-up and the evening reminder separately. The morning message has its own time, title and text, and has no Yes/No buttons. Enable it under **Ochtendwaarschuwing** and choose a time before the evening reminder.
+- Configure the evening reminder time and number of days before pickup (`1` = tomorrow). The date format applies to sensor states; an existing automation with a saved date-format input keeps its selected value until you change it.
 - Optional actionable iOS/Android notifications: **Yes** confirms the bins are out and clears the notification; **No** postpones the next reminder from the time you tap it.
 - No response: the next reminder arrives after the configured interval (e.g. 10, 60 or 120 minutes), up to a configurable maximum.
 - Supports **two independently configured Companion App phones** without creating a notification group (second phone optional). A mobile notification group remains possible. **Yes on either phone** confirms the cycle and clears both notifications.
@@ -49,13 +50,20 @@ A **Core restart or automation reload does not reset an active reminder**: the n
    ```
 
    Add it to your existing `input_text:` block if one already exists, rather than creating a duplicate top-level key. Reload the Input Text integration or restart Home Assistant if needed.
-4. Import the blueprint or make an automation based on it. Choose the waste sensors, first reminder time and **Notificatieapparaat 1** (`notify.mobile_app_*`). Optionally configure **Notificatieapparaat 2** with a different mobile notify service (no group necessary).
-5. Enable **Vraag om Ja/Nee-bevestiging**, select the `input_text` entity under **Statusopslag voor bevestigingen**, and set the repeat interval and notification maximum.
-6. Disable your old reminder automation before activating the new one to prevent duplicate pushes.
+4. Import the blueprint or make an automation based on it. Choose the waste sensors, evening reminder time and **Notificatieapparaat 1** (`notify.mobile_app_*`). Optionally configure **Notificatieapparaat 2** with a different mobile notify service (no group necessary).
+5. Optionally enable **Stuur een waarschuwing in de ochtend** under **Ochtendwaarschuwing**. Set the morning time, title and text. The morning message lists the matching waste types and needs no extra helper.
+6. Enable **Vraag om Ja/Nee-bevestiging**, select the `input_text` entity under **Statusopslag voor bevestigingen**, and set the repeat interval and notification maximum.
+7. Disable your old reminder automation before activating the new one to prevent duplicate pushes.
 
 After repository updates, re-import the blueprint in Home Assistant and reload automations. Check the date-format input on existing automations: an explicitly saved value does not change when the blueprint default changes.
 
 For multiple Trash Notify automations, create **one separate `input_text` helper per automation** to prevent their state and button IDs from colliding.
+
+## Morning and evening notifications
+
+With the default one-day offset, the morning notification warns that the matched bins must go out **that evening** for collection the next day. It uses the same sensor date match as the evening reminder. Both messages go to the configured notify services; the morning message has no actions and is sent once at its configured time. It does not change the persistent helper, the evening send count, or the evening Yes/No cycle. An evening **Yes** confirms that collection cycle, including if a morning warning was sent earlier.
+
+The morning warning is a separate notification and can remain visible after the evening notification is cleared. If Home Assistant is offline at the morning time, that warning is missed; the existing evening confirmation cycle can still start later that day. For same-day retesting, adjusting only the evening time does not reset a confirmed cycle; see below.
 
 ## How restart-safe reminders work
 
